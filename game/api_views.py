@@ -23,14 +23,15 @@ def search_battle(request):
     """
     user = request.user
     level = user.level
-    poll[level].append(user)
-    payload = dict(pull_url=reverse('pull-battle'))
+    if user not in poll[level]:
+        poll[level].append(user)
+    payload = dict(pull_url=reverse('wait-for-battle'))
     return JsonResponse(payload)
 
 
 @api_view(['GET'])
 @login_required
-def battle_wait(request):
+def wait_for_battle(request):
     """
     Ищем зарегистрированных игроков, если есть пара - сообщаем им уникальный
     урл их битвы и выкидываем их из списка ищущих битвы
@@ -41,10 +42,13 @@ def battle_wait(request):
     if user not in users:
         return JsonResponse(dict(detail='you are not registered in search'),
                             status=400)
+    if len(poll[level]) < 2:
+        return JsonResponse(dict(ready=False))
+
     # remove first pair
     poll[level] = users[2:]
 
-    new_battle = Battle.objects.create(player1=users[0], palyer2=users[1])
+    new_battle = Battle.objects.create(player1=users[0], player2=users[1])
     return redirect(reverse('battle', id=new_battle.id))
 
 
